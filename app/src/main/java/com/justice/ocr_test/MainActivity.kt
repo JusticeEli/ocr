@@ -1,5 +1,6 @@
 package com.justice.ocr_test
 
+import android.R.attr
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
@@ -28,6 +29,8 @@ import android.database.Cursor
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
+import com.theartofdev.edmodo.cropper.CropImage
+import com.theartofdev.edmodo.cropper.CropImageView
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -52,6 +55,12 @@ import java.io.FileInputStream
 import java.lang.reflect.Type
 import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
+import android.R.attr.data
+import android.graphics.Bitmap
+import java.io.ByteArrayOutputStream
+
+
+
 
 
 class MainActivity : AppCompatActivity() {
@@ -67,14 +76,28 @@ class MainActivity : AppCompatActivity() {
             getSharedPreferences(Constants.SHARED_PREF, Context.MODE_PRIVATE)
 
         setOnClickListener()
-        //launchGallery()
-        CoroutineScope(Dispatchers.IO).launch {
-           //  val operationId = do_post_url()
-            val operationId = "bf45a229-118d-4b9d-a6bb-2cd594891fc4"
-            do_get(operationId)
-        }
+        //  launchGallery()
+        //launchImagePicker()
+        /*    CoroutineScope(Dispatchers.IO).launch {
+               //  val operationId = do_post_url()
+                val operationId = "bf45a229-118d-4b9d-a6bb-2cd594891fc4"
+                do_get(operationId)
+            }*/
+
 
     }
+
+    private fun launchImagePicker() {
+        Log.d(TAG, "launchImagePicker: ")
+        // start picker to get image for cropping and then use the image in cropping activity
+        CropImage.activity()
+            .setGuidelines(CropImageView.Guidelines.ON)
+            //.setAspectRatio(1, 72)
+            //.setOutputUri()
+            .setCropShape(CropImageView.CropShape.RECTANGLE)
+            .start(this);
+    }
+
 
     private suspend fun do_post_url(): String {
         Log.d(TAG, "do_post_url: loading...")
@@ -192,10 +215,46 @@ class MainActivity : AppCompatActivity() {
         startTheMarkingProcess(studentsAnswers)
     }
 
+    private fun analyzeAnswers_From_Azure(readResults: List<com.microsoft.azure.cognitiveservices.vision.computervision.models.ReadResult>) {
+        Log.d(TAG, "analyzeAnswers: ")
+        val studentsAnswers = mutableListOf<Answer>()
+        for (readResult in readResults) {
+            var index = 0
+            for (line in readResult.lines()) {
+                Log.d(TAG, "analyzeAnswers: line $index >>${line.text()}")
+                val data = line.text().split(",")
+                if (data.size == 5) {
+                    val answer = Answer()
+                    answer.number = Integer.valueOf(data[0].trim())
+                    val choices = data.toList().map { it.trim() }
+                    if (!choices.contains("A")) {
+                        answer.choice = "A"
+                    } else if (!choices.contains("B")) {
+                        answer.choice = "B"
+                    } else if (!choices.contains("C")) {
+                        answer.choice = "C"
+                    } else if (!choices.contains("D")) {
+                        answer.choice = "D"
+                    } else {
+                        answer.choice = "No Answer Written"
+                    }
+                    Log.d(TAG, "analyzeAnswers: answer:$answer")
+                    studentsAnswers.add(answer)
+                }
+
+
+                index += 1
+            }
+
+        }
+        Log.d(TAG, "analyzeAnswers: studentAnswers:$studentsAnswers")
+        startTheMarkingProcess(studentsAnswers)
+    }
+
     private fun startTheMarkingProcess(studentsAnswers: MutableList<Answer>) {
         Log.d(TAG, "startTheMarkingProcess: size:${studentsAnswers.size}")
         Log.d(TAG, "startTheMarkingProcess: studentsAnswers:$studentsAnswers")
-        val teachersAnswers=fetchAnswerFromSharedPref()
+        val teachersAnswers = fetchAnswerFromSharedPref()
         studentsAnswers.retainAll(teachersAnswers)
         Log.d(TAG, "startTheMarkingProcess: marks size:${studentsAnswers.size}")
     }
@@ -291,7 +350,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setOnClickListener() {
         binding.button.setOnClickListener {
-            launchGallery()
+            launchImagePicker()
         }
 
     }
@@ -306,72 +365,95 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
         //  intent.type = "image/*"
         intent.type = "*/*"
-        startActivityForResult(Intent.createChooser(intent, "Select Picture"), PICK_IMAGE_REQUEST)
+        startActivityForResult(
+            Intent.createChooser(intent, "Select Picture"),
+            PICK_IMAGE_REQUEST
+        )
     }
+
+    /*    @SuppressLint("NewApi")
+        override fun onActivityResult(requestCode: Int, resultCode: Int, dataIntent: Intent?) {
+            super.onActivityResult(requestCode, resultCode, dataIntent)
+            Log.d(TAG, "onActivityResult: ")
+            var path: Uri? = null
+            if (requestCode == PICK_IMAGE_REQUEST && resultCode == Activity.RESULT_OK) {
+                if (dataIntent == null || dataIntent.data == null) {
+                    Log.d(TAG, "onActivityResult: data_intent is null")
+                    return
+                }
+                path = dataIntent.data
+                Log.d(TAG, "onActivityResult: path:$path")
+
+
+    // Create an authenticated Computer Vision client.
+                // Create an authenticated Computer Vision client.
+                val compVisClient = Authenticate()!!
+
+                val originalFile = getFile(applicationContext, path!!)
+                var fileCopy = File.createTempFile("file", ".jpg")
+                copy(originalFile, fileCopy)
+                *//*     CoroutineScope(Dispatchers.IO).launch {
+                     try {
+
+                         // val operationId = do_post_file(originalFile!!)
+                         val operationId = do_post_url()
+                         do_get(operationId)
+                     } catch (e: Exception) {
+                         Log.e(TAG, "onActivityResult: Error", e)
+                     }
+                 }*//*
+            CoroutineScope(Dispatchers.IO).launch {
+                ReadFromFile(compVisClient, originalFile!!)
+            }
+
+
+        }
+
+    }*/
 
     @SuppressLint("NewApi")
     override fun onActivityResult(requestCode: Int, resultCode: Int, dataIntent: Intent?) {
         super.onActivityResult(requestCode, resultCode, dataIntent)
         Log.d(TAG, "onActivityResult: ")
-        var path: Uri? = null
-        if (requestCode == PICK_IMAGE_REQUEST && resultCode == Activity.RESULT_OK) {
-            if (dataIntent == null || dataIntent.data == null) {
-                Log.d(TAG, "onActivityResult: data_intent is null")
-                return
-            }
-            path = dataIntent.data
-            Log.d(TAG, "onActivityResult: path:$path")
+        if (requestCode === CropImage.CROP_IMAGE_ACTIVITY_REQUEST_CODE) {
+            val result = CropImage.getActivityResult(dataIntent)
+            Log.d(TAG, "onActivityResult: result:$result")
+            if (resultCode === RESULT_OK) {
+                val resultUri = result.uri
+                Log.d(TAG, "onActivityResult: uri:$resultUri")
+                CoroutineScope(Dispatchers.IO).launch {
+                    val compVisClient = Authenticate()!!
+                  val byteArray=  readBytes(this@MainActivity,resultUri)!!
 
-
-// Create an authenticated Computer Vision client.
-            // Create an authenticated Computer Vision client.
-            val compVisClient = Authenticate()!!
-
-            val originalFile = getFile(applicationContext, path!!)
-            var fileCopy = File.createTempFile("file", ".jpg")
-            copy(originalFile, fileCopy)
-            CoroutineScope(Dispatchers.IO).launch {
-                try {
-
-                    // val operationId = do_post_file(originalFile!!)
-                    val operationId = do_post_url()
-                    do_get(operationId)
-                } catch (e: Exception) {
-                    Log.e(TAG, "onActivityResult: Error", e)
+                   // val originalFile = getFile(applicationContext, resultUri!!)
+                   // File.
+                    ReadFromFile(compVisClient, File(""),bytes = byteArray)
                 }
 
-
-                //  ReadFromFile(compVisClient, file!!)
-
+            } else if (resultCode === CropImage.CROP_IMAGE_ACTIVITY_RESULT_ERROR_CODE) {
+                val error = result.error
+                Log.e(TAG, "onActivityResult: Error", error)
             }
-
-
         }
 
-    }
 
+    }
     @Throws(IOException::class)
-    fun copy(src: File?, dst: File?) {
-        val `in`: InputStream = FileInputStream(src)
-        try {
-            val out: OutputStream = FileOutputStream(dst)
-            try {
-                // Transfer bytes from in to out
-                val buf = ByteArray(1024)
-                var len: Int
-                while (`in`.read(buf).also { len = it } > 0) {
-                    out.write(buf, 0, len)
-                }
-            } finally {
-                out.close()
-            }
-        } finally {
-            `in`.close()
-        }
+    private fun readBytes(context: Context, uri: Uri): ByteArray? =
+        context.contentResolver.openInputStream(uri)?.buffered()?.use { it.readBytes() }
+    private fun getByteArrayFromBitmap(bmp: Bitmap): ByteArray {
+
+        val stream = ByteArrayOutputStream()
+        bmp.compress(Bitmap.CompressFormat.PNG, 100, stream)
+        val byteArray = stream.toByteArray()
+        bmp.recycle()
+        return byteArray
     }
+
 
     @Throws(IOException::class)
     fun getFile(context: Context, uri: Uri): File? {
+        Log.d(TAG, "getFile: ")
         val destinationFilename: File =
             File(context.getFilesDir().getPath() + File.separatorChar + queryName(context, uri))
         try {
@@ -389,6 +471,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun createFileFromStream(ins: InputStream, destination: File?) {
+        Log.d(TAG, "createFileFromStream: ")
         try {
             FileOutputStream(destination).use { os ->
                 val buffer = ByteArray(4096)
@@ -405,6 +488,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun queryName(context: Context, uri: Uri): String {
+        Log.d(TAG, "queryName: ")
         val returnCursor: Cursor = context.getContentResolver().query(uri, null, null, null, null)!!
         val nameIndex = returnCursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
         returnCursor.moveToFirst()
@@ -419,27 +503,30 @@ class MainActivity : AppCompatActivity() {
      * // * @param localFilePath local file path from which to perform the read operation against
      */
     @RequiresApi(api = Build.VERSION_CODES.O)
-    private fun ReadFromFile(client: ComputerVisionClient, rawImage: File) {
+    private suspend fun ReadFromFile(client: ComputerVisionClient, rawImage: File,bytes: ByteArray=ByteArray(2)) {
+        // val TAG = "MainActivity"
         Log.d(TAG, "ReadFromFile: ")
-        val localFilePath = "src\\main\\resources\\myImage.png"
-        Log.d(TAG, "ReadFromFile: Read with local file: $localFilePath")
         try {
-            // File rawImage = new File(localFilePath);
-            val localImageBytes = Files.readAllBytes(rawImage.toPath())
+            val rawImage = File(rawImage.path);
+           // val localImageBytes = Files.readAllBytes(rawImage.toPath())
+            val localImageBytes = bytes
 
             // Cast Computer Vision to its implementation to expose the required methods
             val vision = client.computerVision() as ComputerVisionImpl
 
             // Read in remote image and response header
-            val responseHeader =
-                vision.readInStreamWithServiceResponseAsync(localImageBytes, null, null)
-                    .toBlocking()
-                    .single()
-                    .headers()
+            val response = vision.readInStreamWithServiceResponseAsync(localImageBytes, null, null)
+                .toBlocking()
+                .single()
+            val responseHeader = response.headers()
+
+            Log.d(TAG, "ReadFromFile: response body:${response.response().raw().body()}")
+            Log.d(TAG, "ReadFromFile: response headers:${response.response().raw().headers()}")
+            Log.d(TAG, "ReadFromFile: response error_body:${response.response().errorBody()}")
 
 // Extract the operationLocation from the response header
+            val operationLocation = response.response().raw().header("operation-location")!!
             Log.d(TAG, "ReadFromFile: header:$responseHeader")
-            val operationLocation = responseHeader.operationLocation()
             Log.d(TAG, "ReadFromFile: Operation Location:$operationLocation")
             getAndPrintReadResult(vision, operationLocation)
         } catch (e: Exception) {
@@ -479,18 +566,17 @@ class MainActivity : AppCompatActivity() {
         for (pageResult in readResults!!.analyzeResult().readResults()) {
 
             Log.d(TAG, "getAndPrintReadResult: Printing Read results for page " + pageResult.page())
-            Log.d(
-                TAG,
-                "getAndPrintReadResult:Printing Read results for page  ${pageResult.page()} "
-            )
             val builder = StringBuilder()
             for (line in pageResult.lines()) {
                 builder.append(line.text())
                 builder.append("\n")
             }
-            Log.d(TAG, "getAndPrintReadResult: ${builder.toString()}")
+            Log.d(TAG, "getAndPrintReadResult:\n ${builder.toString()}")
             // android.util.Log.d(TAG, "getAndPrintReadResult: ")(builder.toString())
         }
+
+
+        analyzeAnswers_From_Azure(readResults!!.analyzeResult().readResults())
     }
 
 
