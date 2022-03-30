@@ -50,7 +50,7 @@ dependencies {
     implementation "com.microsoft.azure.cognitiveservices:azure-cognitiveservices-computervision:1.0.6-beta"
 
 
-    //Duplicate class com.google.common.util.concurrent.ListenableFuture
+    //Duplicate class com.google.common.util.concurrent.ListenableFuture fix
     // found in modules guava-20.0.jar (com.google.guava:guava:20.0)
     implementation 'com.google.firebase:firebase-inappmessaging-display:17.2.0'
     implementation 'com.google.guava:guava:27.0.1-android'
@@ -68,5 +68,9 @@ dependencies {
     // Retrofit + GSON
     implementation "com.squareup.retrofit2:retrofit:$retrofitVersion"
     implementation "com.squareup.retrofit2:converter-gson:$retrofitVersion"
+
+    //gson
+    implementation 'com.google.code.gson:gson:2.8.6'
+
 
 }

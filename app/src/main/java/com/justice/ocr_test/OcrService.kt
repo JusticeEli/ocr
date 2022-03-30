@@ -9,6 +9,7 @@ interface OcrService {
 
 
     @Multipart
+    @Streaming
     @POST("analyze/")
     suspend fun loadImage(
         @Part
@@ -23,7 +24,14 @@ interface OcrService {
         image: JsonObject,
         @Header("Content-Type") content_type: String,
         @Header("Ocp-Apim-Subscription-Key") subscriptionKey: String
-    ): Response<JsonObject>
+    ): Response<Void>
+    @GET("analyzeResults/{operationId}")
+    suspend fun get_image(
+        @Path("operationId")
+        operationId: String,
+        @Header("Content-Type") content_type: String,
+        @Header("Ocp-Apim-Subscription-Key") subscriptionKey: String
+    ): Response<OcrResponseData>
 
 
 }
