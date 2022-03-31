@@ -1,4 +1,4 @@
-package com.justice.ocr_test
+package com.justice.ocr_test.presentation.ui.set_answers
 
 import android.util.Log
 import android.view.LayoutInflater
@@ -8,6 +8,8 @@ import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.justice.ocr_test.R
+import com.justice.ocr_test.presentation.ui.models.Answer
 
 
 class ExamAnswerAdapter internal constructor(private val answerList: MutableList<Answer>) : RecyclerView.Adapter<ExamAnswerAdapter.ViewHolder>() {
@@ -22,6 +24,9 @@ class ExamAnswerAdapter internal constructor(private val answerList: MutableList
 
     override fun getItemCount(): Int {
         return answerList.size
+    }
+    fun getCurrentList():List<Answer>{
+        return answerList
     }
 
     inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {

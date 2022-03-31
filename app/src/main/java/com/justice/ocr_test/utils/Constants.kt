@@ -1,4 +1,4 @@
-package com.justice.ocr_test
+package com.justice.ocr_test.utils
 
 object Constants {
      val KEY_ANSWERS = "teacher_answers"

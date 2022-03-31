@@ -1,4 +1,6 @@
-package com.justice.ocr_test
+package com.justice.ocr_test.presentation.ui.main.models
+
+import com.justice.ocr_test.presentation.ui.main.models.AnalyzeResult
 
 data class OcrResponseData(
     val analyzeResult: AnalyzeResult,

@@ -5,7 +5,12 @@
       <map>
         <entry key="..\:/Users/user/Documents/ocr_test2/app/src/main/res/layout/activity_main.xml" value="0.1" />
         <entry key="..\:/Users/user/Documents/ocr_test2/app/src/main/res/layout/activity_set_answers.xml" value="0.21666666666666667" />
+        <entry key="..\:/Users/user/Documents/ocr_test2/app/src/main/res/layout/fragment_main.xml" value="0.12222222222222222" />
+        <entry key="..\:/Users/user/Documents/ocr_test2/app/src/main/res/layout/fragment_set_answers.xml" value="0.12037037037037036" />
         <entry key="..\:/Users/user/Documents/ocr_test2/app/src/main/res/layout/item_set_answers.xml" value="0.12407407407407407" />
+        <entry key="..\:/Users/user/Documents/ocr_test2/app/src/main/res/layout/tool_bar_layout.xml" value="0.35104166666666664" />
+        <entry key="..\:/Users/user/Documents/ocr_test2/app/src/main/res/menu/menu_main.xml" value="0.12037037037037036" />
+        <entry key="..\:/Users/user/Documents/ocr_test2/app/src/main/res/menu/menu_set_answers.xml" value="0.12037037037037036" />
       </map>
     </option>
   </component>

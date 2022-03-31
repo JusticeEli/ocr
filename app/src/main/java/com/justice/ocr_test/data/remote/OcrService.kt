@@ -1,6 +1,7 @@
-package com.justice.ocr_test
+package com.justice.ocr_test.data.remote
 
 import com.google.gson.JsonObject
+import com.justice.ocr_test.presentation.ui.main.models.OcrResponseData
 import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.*
