@@ -1,5 +1,5 @@
 # ocr
-Enables automation of marking MCQs(Multiple Choice Questions) Exams:
+Enables automation of marking MCQs(Multiple Choice Questions) Answer sheets:
 
 ## Tech Stack
 - Kotlin
