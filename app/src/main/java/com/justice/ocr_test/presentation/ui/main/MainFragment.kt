@@ -22,6 +22,8 @@ import com.theartofdev.edmodo.cropper.CropImage
 import com.theartofdev.edmodo.cropper.CropImageView
 import dagger.hilt.android.AndroidEntryPoint
 import es.dmoral.toasty.Toasty
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.util.*
@@ -86,7 +88,7 @@ class MainFragment : Fragment(R.layout.fragment_main) {
                         }
                         Resource.Status.SUCCESS -> {
                             showProgress(false)
-                            showToastInfo(it.message!!)
+                            showToastInfo(it.data!!)
                             updateLabel(it.data!!)
                         }
                         Resource.Status.ERROR -> {
@@ -144,6 +146,7 @@ class MainFragment : Fragment(R.layout.fragment_main) {
             if (resultCode === RESULT_OK) {
                 val uri = result.uri
                 Log.d(TAG, "onActivityResult: uri:$uri")
+binding.ivChoosenImage.setImageURI(uri)
                 viewModel.setEvent(MainViewModel.Event.ImageReceived(requireContext(), uri!!))
             } else if (resultCode === CropImage.CROP_IMAGE_ACTIVITY_RESULT_ERROR_CODE) {
                 val error = result.error

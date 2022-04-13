@@ -16,9 +16,12 @@ import com.justice.ocr_test.presentation.ui.models.Answer
 import com.justice.ocr_test.utils.Resource
 import com.microsoft.azure.cognitiveservices.vision.computervision.ComputerVision
 import com.microsoft.azure.cognitiveservices.vision.computervision.ComputerVisionClient
+import com.microsoft.azure.cognitiveservices.vision.computervision.ComputerVisionManager
 import com.microsoft.azure.cognitiveservices.vision.computervision.implementation.ComputerVisionImpl
 import com.microsoft.azure.cognitiveservices.vision.computervision.models.OperationStatusCodes
 import com.microsoft.azure.cognitiveservices.vision.computervision.models.ReadOperationResult
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -28,7 +31,6 @@ import java.lang.reflect.Type
 import java.util.*
 
 class MainViewModel @ViewModelInject constructor(
-    private val computerVisionClient: ComputerVisionClient,
     private val sharedPreferences: SharedPreferences
 ) :
     ViewModel() {
@@ -37,23 +39,35 @@ class MainViewModel @ViewModelInject constructor(
     private val TAG = "MainViewModel"
     private val DELAY_TIME_IN_MILLIS = 60_000L //1 minutes
     fun setEvent(event: MainViewModel.Event) {
-        viewModelScope.launch {
+
+        CoroutineScope(Dispatchers.IO).launch {
             when (event) {
                 is Event.ImageReceived -> {
                     imageReceived(event.context, event.uri)
                 }
             }
         }
+   /*     viewModelScope.launch {
+            when (event) {
+                is Event.ImageReceived -> {
+                    imageReceived(event.context, event.uri)
+                }
+            }
+        }*/
     }
 
     private val _imageReceivedeStatus = Channel<Resource<String>>()
     val imageReceivedeStatus = _imageReceivedeStatus.receiveAsFlow()
 
-    private suspend fun imageReceived(context: Context, uri: Uri) {
+    public suspend fun imageReceived(context: Context, uri: Uri) {
+        Log.d(TAG, "imageReceived: ")
         _imageReceivedeStatus.send(Resource.loading(""))
         val byteArray = readBytesFromImageUri(context, uri)!!
         if (Build.VERSION.SDK_INT>=Build.VERSION_CODES.O){
-            readFromFile(byteArray)
+            CoroutineScope(Dispatchers.IO).launch {
+                readFromFile(byteArray)
+
+            }
 
         }else{
             val message="imageReceived: phone version is lower than OREO"
@@ -68,7 +82,11 @@ class MainViewModel @ViewModelInject constructor(
     @Throws(IOException::class)
     private fun readBytesFromImageUri(context: Context, uri: Uri): ByteArray? =
         context.contentResolver.openInputStream(uri)?.buffered()?.use { it.readBytes() }
-
+    fun provideComputerVisionClient(): ComputerVisionClient {
+        val subscriptionKey = "4b5206f7e7d04cd6ab880af42f8af16a";
+        val endpoint = "https://school-management.cognitiveservices.azure.com/";
+        return ComputerVisionManager.authenticate(subscriptionKey).withEndpoint(endpoint)
+    }
     /**
      * OCR with READ : Performs a Read Operation on a local image
      * @param client instantiated vision client
@@ -76,13 +94,13 @@ class MainViewModel @ViewModelInject constructor(
      */
     @RequiresApi(api = Build.VERSION_CODES.O)
     private suspend fun readFromFile(byteArray: ByteArray) {
-        Log.d(TAG, "ReadFromFile: ")
+        Log.d(TAG, "readFromFile: ")
         try {
             // val localImageBytes = Files.readAllBytes(rawImage.toPath())
             val localImageBytes = byteArray
 
             // Cast Computer Vision to its implementation to expose the required methods
-            val vision = computerVisionClient.computerVision() as ComputerVisionImpl
+            val vision = provideComputerVisionClient().computerVision() as ComputerVisionImpl
 
             // Read in remote image and response header
             val response = vision.readInStreamWithServiceResponseAsync(localImageBytes, null, null)
@@ -90,17 +108,17 @@ class MainViewModel @ViewModelInject constructor(
                 .single()
             val responseHeader = response.headers()
 
-            Log.d(TAG, "ReadFromFile: response body:${response.response().raw().body()}")
-            Log.d(TAG, "ReadFromFile: response headers:${response.response().raw().headers()}")
-            Log.d(TAG, "ReadFromFile: response error_body:${response.response().errorBody()}")
+            Log.d(TAG, "readFromFile: response body:${response.response().raw().body()}")
+            Log.d(TAG, "readFromFile: response headers:${response.response().raw().headers()}")
+            Log.d(TAG, "readFromFile: response error_body:${response.response().errorBody()}")
 
 // Extract the operationLocation from the response header
             val operationLocation = response.response().raw().header("operation-location")!!
-            Log.d(TAG, "ReadFromFile: header:$responseHeader")
-            Log.d(TAG, "ReadFromFile: Operation Location:$operationLocation")
+            Log.d(TAG, "readFromFile: header:$responseHeader")
+            Log.d(TAG, "readFromFile: Operation Location:$operationLocation")
             getAnalyzedResultsFromOperationLocation(vision, operationLocation)
         } catch (e: Exception) {
-            Log.e(TAG, "ReadFromFile: Error", e)
+            Log.e(TAG, "readFromFile:", e)
             _imageReceivedeStatus.send(Resource.error(e))
         }
     }
