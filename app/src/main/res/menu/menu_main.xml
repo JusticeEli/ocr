@@ -3,4 +3,10 @@
     <item
         android:id="@+id/itemSetAnswers"
         android:title="Set Answers" />
+    <item
+        android:id="@+id/itemRetry"
+        android:title="Retry" />
+    <item
+        android:id="@+id/itemExit"
+        android:title="Exit" />
 </menu>

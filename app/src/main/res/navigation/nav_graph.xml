@@ -19,5 +19,5 @@
         <action
             android:id="@+id/action_mainFragment_to_setAnswersFragment"
             app:destination="@id/setAnswersFragment" />
-    </fragment>
+    </fragment><action android:id="@+id/action_global_setAnswersFragment" app:destination="@id/setAnswersFragment"/><action android:id="@+id/action_global_mainFragment" app:destination="@id/mainFragment"/>
 </navigation>

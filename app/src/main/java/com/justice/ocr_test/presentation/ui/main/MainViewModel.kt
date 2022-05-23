@@ -7,8 +7,11 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.hilt.lifecycle.ViewModelInject
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.justice.ocr_test.utils.Constants
@@ -35,9 +38,9 @@ class MainViewModel @ViewModelInject constructor(
 ) :
     ViewModel() {
 
-
+    var initialTime: Long = 0
     private val TAG = "MainViewModel"
-    private val DELAY_TIME_IN_MILLIS = 60_000L //1 minutes
+    private val DELAY_TIME_IN_MILLIS = 2_000L //1 minutes
     fun setEvent(event: MainViewModel.Event) {
 
         CoroutineScope(Dispatchers.IO).launch {
@@ -47,32 +50,35 @@ class MainViewModel @ViewModelInject constructor(
                 }
             }
         }
-   /*     viewModelScope.launch {
-            when (event) {
-                is Event.ImageReceived -> {
-                    imageReceived(event.context, event.uri)
-                }
-            }
-        }*/
+
     }
 
-    private val _imageReceivedeStatus = Channel<Resource<String>>()
+    val _imageUriLiveData = MutableLiveData<Uri>()
+    val imageUriLiveData = _imageUriLiveData as LiveData<Uri>
+    fun setImageUri(uri: Uri) {
+        _imageUriLiveData.value = uri
+    }
+
+    private val _imageReceivedeStatus = Channel<Resource<Result>>()
     val imageReceivedeStatus = _imageReceivedeStatus.receiveAsFlow()
 
     public suspend fun imageReceived(context: Context, uri: Uri) {
         Log.d(TAG, "imageReceived: ")
         _imageReceivedeStatus.send(Resource.loading(""))
+
+        initialTime = System.currentTimeMillis()
+
         val byteArray = readBytesFromImageUri(context, uri)!!
-        if (Build.VERSION.SDK_INT>=Build.VERSION_CODES.O){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             CoroutineScope(Dispatchers.IO).launch {
                 readFromFile(byteArray)
 
             }
 
-        }else{
-            val message="imageReceived: phone version is lower than OREO"
-            val e=Exception(message)
-            Log.e(TAG, "imageReceived: ",e )
+        } else {
+            val message = "imageReceived: phone version is lower than OREO"
+            val e = Exception(message)
+            Log.e(TAG, "imageReceived: ", e)
             _imageReceivedeStatus.send(Resource.error(e))
         }
 
@@ -82,11 +88,13 @@ class MainViewModel @ViewModelInject constructor(
     @Throws(IOException::class)
     private fun readBytesFromImageUri(context: Context, uri: Uri): ByteArray? =
         context.contentResolver.openInputStream(uri)?.buffered()?.use { it.readBytes() }
+
     fun provideComputerVisionClient(): ComputerVisionClient {
         val subscriptionKey = "4b5206f7e7d04cd6ab880af42f8af16a";
         val endpoint = "https://school-management.cognitiveservices.azure.com/";
         return ComputerVisionManager.authenticate(subscriptionKey).withEndpoint(endpoint)
     }
+
     /**
      * OCR with READ : Performs a Read Operation on a local image
      * @param client instantiated vision client
@@ -119,9 +127,14 @@ class MainViewModel @ViewModelInject constructor(
             getAnalyzedResultsFromOperationLocation(vision, operationLocation)
         } catch (e: Exception) {
             Log.e(TAG, "readFromFile:", e)
+            recordExeption(e)
             _imageReceivedeStatus.send(Resource.error(e))
         }
     }
+
+    fun recordExeption(throwable: Throwable) =
+        FirebaseCrashlytics.getInstance().recordException(throwable)
+
 
     @Throws(InterruptedException::class)
     private suspend fun getAnalyzedResultsFromOperationLocation(
@@ -171,26 +184,42 @@ class MainViewModel @ViewModelInject constructor(
         for (readResult in readResults) {
             var index = 0
             for (line in readResult.lines()) {
-                Log.d(TAG, "analyzeAnswers: line $index >>${line.text()}")
-                val data = line.text().split(",")
-                if (data.size == 5) {
-                    val answer = Answer()
+
+                val data = line.text().split(",", ".", " ").filter { it.isNotBlank() }
+                Log.d(TAG, "analyzeAnswers: line $index >>${line.text()} >>size:${data.size}")
+
+                //  if (data.size == 5) {
+                val answer = Answer()
+                try {
                     answer.number = Integer.valueOf(data[0].trim())
-                    val choices = data.toList().map { it.trim() }
-                    if (!choices.contains("A")) {
-                        answer.choice = "A"
-                    } else if (!choices.contains("B")) {
-                        answer.choice = "B"
-                    } else if (!choices.contains("C")) {
-                        answer.choice = "C"
-                    } else if (!choices.contains("D")) {
-                        answer.choice = "D"
-                    } else {
-                        answer.choice = "No Answer Written"
+
+                } catch (e: Exception) {
+                    Log.e(TAG, "analyzeAnswers_From_Azure: ", e)
+                    if (studentsAnswers.last().number > 25) {
+                        answer.number = (studentsAnswers.last().number - 25) + 1
+                    }else{
+                        recordExeption(e)
+                        continue
                     }
-                    Log.d(TAG, "analyzeAnswers: answer:$answer")
-                    studentsAnswers.add(answer)
+
+
                 }
+                // val choices = data.toList().map { it.trim() }
+                val choices = line.text()
+                if (!choices.contains("A")) {
+                    answer.choice = "A"
+                } else if (!choices.contains("B")) {
+                    answer.choice = "B"
+                } else if (!choices.contains("C")) {
+                    answer.choice = "C"
+                } else if (!choices.contains("D")) {
+                    answer.choice = "D"
+                } else {
+                    answer.choice = "No Answer Written"
+                }
+                Log.d(TAG, "analyzeAnswers: answer:$answer")
+                studentsAnswers.add(answer)
+                //  }
 
 
                 index += 1
@@ -208,8 +237,22 @@ class MainViewModel @ViewModelInject constructor(
         studentsAnswers.retainAll(teachersAnswers)
         Log.d(TAG, "startTheMarkingProcess: marks size:${studentsAnswers.size}")
         val message = "Total marks is ${studentsAnswers.size}/50"
-        _imageReceivedeStatus.send(Resource.success(message))
+        val timeTakenToAnalyse = getTimeTakenToAnalze()
+        _imageReceivedeStatus.send(Resource.success(Result(message, timeTakenToAnalyse)))
+
     }
+
+    private fun getTimeTakenToAnalze(): String {
+        Log.d(TAG, "getTimeTakenToAnalze: ")
+        Log.d(TAG, "getTimeTakenToAnalze: initialTIme:$initialTime")
+        val millis = System.currentTimeMillis() - initialTime
+        val minutes = (millis / 1000) / 60;
+        val seconds = ((millis / 1000) % 60);
+
+        return "Time taken is $minutes minute(s) and $seconds second(s)"
+    }
+
+    data class Result(val message: String, val timeTakenToAnalyse: String)
 
 
     fun fetchAnswerFromSharedPref(): MutableList<Answer> {

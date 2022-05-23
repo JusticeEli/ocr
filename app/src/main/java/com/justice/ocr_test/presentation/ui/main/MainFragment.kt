@@ -53,6 +53,12 @@ class MainFragment : Fragment(R.layout.fragment_main) {
                 R.id.itemSetAnswers -> {
                     goToSetAnswersScreen()
                 }
+                R.id.itemRetry -> {
+                    retry()
+                }
+                R.id.itemExit -> {
+                    requireActivity().finish()
+                }
 
 
             }
@@ -61,8 +67,17 @@ class MainFragment : Fragment(R.layout.fragment_main) {
         }
     }
 
+    fun retry() =
+        viewModel.setEvent(
+            MainViewModel.Event.ImageReceived(
+                requireContext(),
+                viewModel.imageUriLiveData.value!!
+            )
+        )
+
+
     private fun goToSetAnswersScreen() {
-        findNavController().navigate(MainFragmentDirections.actionMainFragmentToSetAnswersFragment())
+        findNavController().navigate(MainFragmentDirections.actionGlobalSetAnswersFragment())
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -88,7 +103,7 @@ class MainFragment : Fragment(R.layout.fragment_main) {
                         }
                         Resource.Status.SUCCESS -> {
                             showProgress(false)
-                            showToastInfo(it.data!!)
+                            showToastInfo(it.data!!.message)
                             updateLabel(it.data!!)
                         }
                         Resource.Status.ERROR -> {
@@ -102,16 +117,18 @@ class MainFragment : Fragment(R.layout.fragment_main) {
         }
     }
 
-    private fun updateLabel(data: String) {
+    private fun updateLabel(data: MainViewModel.Result) {
         Log.d(TAG, "updateLabel: data:$data")
-        binding.tvMarks.text = data
+        binding.tvMarks.text = data.message
+        binding.tvTime.text = data.timeTakenToAnalyse
+
     }
 
 
+    private fun showToastInfo(message: String) {
+        Toasty.info(requireContext(), message).show()
+    }
 
-   private fun showToastInfo(message: String) {
-           Toasty.info(requireContext(), message).show()
-       }
     private fun showProgress(visible: Boolean) {
         Log.d(TAG, "showProgress:$visible ")
         binding.progressBar.isVisible = visible
@@ -146,7 +163,8 @@ class MainFragment : Fragment(R.layout.fragment_main) {
             if (resultCode === RESULT_OK) {
                 val uri = result.uri
                 Log.d(TAG, "onActivityResult: uri:$uri")
-binding.ivChoosenImage.setImageURI(uri)
+                binding.ivChoosenImage.setImageURI(uri)
+                viewModel.setImageUri(uri)
                 viewModel.setEvent(MainViewModel.Event.ImageReceived(requireContext(), uri!!))
             } else if (resultCode === CropImage.CROP_IMAGE_ACTIVITY_RESULT_ERROR_CODE) {
                 val error = result.error

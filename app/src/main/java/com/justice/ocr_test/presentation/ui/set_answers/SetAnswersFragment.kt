@@ -7,15 +7,18 @@ import android.view.View
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.NavDirections
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.justice.ocr_test.R
 import com.justice.ocr_test.databinding.FragmentSetAnswersBinding
 import com.justice.ocr_test.presentation.ui.models.Answer
 import com.justice.ocr_test.utils.Resource
+import com.justice.ocr_test.utils.resetTeachersAnswers
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class SetAnswersFragment : Fragment(R.layout.fragment_set_answers) {
@@ -25,6 +28,8 @@ class SetAnswersFragment : Fragment(R.layout.fragment_set_answers) {
     }
 
     var teachersAnswers = mutableListOf<Answer>()
+
+    @Inject
     lateinit var sharedPreferences: SharedPreferences
 
     lateinit var answerAdapter: ExamAnswerAdapter
@@ -50,7 +55,14 @@ class SetAnswersFragment : Fragment(R.layout.fragment_set_answers) {
                 R.id.itemMain -> {
                     goToMainScreen()
                 }
+                R.id.itemResetAnswers -> {
+                    sharedPreferences.resetTeachersAnswers()
+                    viewModel.setEvent(SetAnswersViewModel.Event.FetchTeachersAnswers)
 
+                }
+                R.id.itemExit -> {
+                    requireActivity().finish()
+                }
 
             }
             true
@@ -104,7 +116,7 @@ class SetAnswersFragment : Fragment(R.layout.fragment_set_answers) {
     }
 
     private fun goToMainScreen() {
-        findNavController().navigate(SetAnswersFragmentDirections.actionSetAnswersFragmentToMainFragment())
+        findNavController().navigate(SetAnswersFragmentDirections.actionGlobalMainFragment())
     }
 
     private fun initRecyclerView(teachersAnswers: MutableList<Answer>) {
